@@ -1,43 +1,42 @@
-name: release_artifacts
-on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # Push events to matching v*, i.e. v1.0, v20.15.10
-      - "v[0-9]+.[0-9]+.[0-9]+-rc*" # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
+name: 'SC Library - Build Release File'
 
-defaults:
-  run:
-    working-directory: ./contracts
+# **What it does**: Reads the contents of the repo and creates a file listing all relevant smart contracts
+# **Why we have it**: To index the smart contracts of the repo for usage with the rest of CLI tooling
+# **Who does it impact**: SC Contract Library
+
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+  # Needed for the 'trilom/file-changes-action' action
+  pull-requests: read
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
 jobs:
-  get_projectserum_version:
-    name: Get ProjectSerum Version
+  gen-release:
     runs-on: ubuntu-latest
-    outputs:
-      projectserum_version: ${{ steps.psversion.outputs.projectserum_version }}
     steps:
-      - name: Checkout the repo
-        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-      - name: Get ProjectSerum Version
-        id: psversion
-        uses: ./.github/actions/projectserum_version
-  release-artifacts:
-    name: Release Artifacts
-    runs-on: ubuntu-latest
-    needs: [get_projectserum_version]
-    container:
-      image: projectserum/build:${{ needs.get_projectserum_version.outputs.projectserum_version }}
-      env:
-        RUSTUP_HOME: "/root/.rustup"
-    steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-      - name: Build Artifacts
-        run: anchor build
-      - name: Generate archive
-        run: |
-          tar cfvz artifacts.tar.gz target/deploy/*.so target/idl/*
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Checkout sources
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
-          files: | 
-            contracts/artifacts.tar.gz
-            contracts/target/deploy/*.so
+          submodules: 'recursive'
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Test
+        run: |
+          echo $RELEASE_VERSION
+          echo ${{ env.RELEASE_VERSION }}
+      - name: Generate and push release artifacts
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          date > release.txt
+          find contracts/artifacts -print >> sclib-release.txt
+          git add sclib-release.txt
+          git commit -m "Generate SC lib release file"
+          git tag ${{ env.RELEASE_VERSION }}+scdist
+          git push origin contracts-v0.0.1-alpha+dist
