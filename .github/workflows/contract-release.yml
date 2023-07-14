@@ -1,0 +1,42 @@
+name: 'SC Library - Build Release File'
+
+# **What it does**: Reads the contents of the repo and creates a file listing all relevant smart contracts
+# **Why we have it**: To index the smart contracts of the repo for usage with the rest of CLI tooling
+# **Who does it impact**: SC Contract Library
+
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+  # Needed for the 'trilom/file-changes-action' action
+  pull-requests: read
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  gen-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        with:
+          submodules: 'recursive'
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Test
+        run: |
+          echo $RELEASE_VERSION
+          echo ${{ env.RELEASE_VERSION }}
+      - name: Generate and push release artifacts
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          date > release.txt
+          find contracts/artifacts -print >> sclib-release.txt
+          git add sclib-release.txt
+          git commit -m "Generate SC lib release file"
+          git tag ${{ env.RELEASE_VERSION }}+scdist
+          git push origin contracts-v0.0.1-alpha+dist
