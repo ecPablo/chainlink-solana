@@ -43,7 +43,9 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          find contracts/release -type f > sclib-release.txt
+          date > release.txt
+          find ${{ env.TARGET_DIRECTORY }}  -print >> sclib-release.txt
+          git add sclib-release.txt
           git commit -m "Generate SC lib release file"
           git tag ${{ env.RELEASE_VERSION }}+scdist
           git push origin ${{ env.RELEASE_VERSION }}+scdist
