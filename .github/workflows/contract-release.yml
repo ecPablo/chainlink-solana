@@ -21,6 +21,6 @@ jobs:
     steps:
       - id: gen-release
         name: 'Generate release.txt'
-        uses: actions/contracts-artifact-action@1.0.0
+        uses: ecPablo/contracts-artifacts-action@1.0.0
         with:
           target-path: 'contracts/programs'
