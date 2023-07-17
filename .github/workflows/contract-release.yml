@@ -3,13 +3,11 @@ name: 'SC Library - Build Release File'
 # **What it does**: Reads the contents of the repo and creates a file listing all relevant smart contracts
 # **Why we have it**: To index the smart contracts of the repo for usage with the rest of CLI tooling
 # **Who does it impact**: SC Contract Library
-
 on:
   release:
     types: [published]
 permissions:
   contents: write
-  # Needed for the 'trilom/file-changes-action' action
   pull-requests: read
 
 # This allows a subsequently queued workflow run to interrupt previous runs
@@ -21,31 +19,8 @@ jobs:
   gen-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Get Version Tag
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      - name: Checkout sources
-        uses: actions/checkout@v3
+      - id: gen-release
+        name: 'Generate release.txt'
+        uses: actions/contracts-artifact-action@1.0.0
         with:
-          submodules: 'recursive'
-      - name: Test
-        run: |
-          echo $RELEASE_VERSION
-          echo ${{ env.RELEASE_VERSION }}
-      - name: Check TARGET_DIRECTORY
-        run: |
-          if [ -z "${{ vars.TARGET_DIRECTORY }}" ]
-          then
-            echo "TARGET_DIRECTORY=contracts/target/release" >> $GITHUB_ENV
-          else
-            echo "TARGET_DIRECTORY=${{ vars.TARGET_DIRECTORY }}" >> $GITHUB_ENV
-          fi
-      - name: Generate and push release artifacts
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          date > release.txt
-          find ${{ vars.TARGET_DIRECTORY }}  -print >> sclib-release.txt
-          git add sclib-release.txt
-          git commit -m "Generate SC lib release file"
-          git tag ${{ env.RELEASE_VERSION }}+scdist
-          git push origin ${{ env.RELEASE_VERSION }}+scdist
+          target-path: 'contracts/programs'
