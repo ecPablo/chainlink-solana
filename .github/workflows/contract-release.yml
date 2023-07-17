@@ -31,13 +31,19 @@ jobs:
         run: |
           echo $RELEASE_VERSION
           echo ${{ env.RELEASE_VERSION }}
+      - name: Check TARGET_DIRECTORY
+        run: |
+          if [ -z "${{ env.TARGET_DIRECTORY }}" ]
+          then
+            echo "TARGET_DIRECTORY=contracts/target/release" >> $GITHUB_ENV
+          else
+            echo "TARGET_DIRECTORY=${{ env.TARGET_DIRECTORY }}" >> $GITHUB_ENV
+          fi
       - name: Generate and push release artifacts
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          date > release.txt
-          find contracts/artifacts -print >> sclib-release.txt
-          git add sclib-release.txt
+          find contracts/release -type f > sclib-release.txt
           git commit -m "Generate SC lib release file"
           git tag ${{ env.RELEASE_VERSION }}+scdist
           git push origin ${{ env.RELEASE_VERSION }}+scdist
